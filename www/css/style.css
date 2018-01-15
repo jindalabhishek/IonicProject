@@ -7,3 +7,15 @@
     width: 100%;
     height: 100%;
 }
+
+.ionic_ratings .icon {
+  font-size:50px;
+}
+
+.ionic_ratings .read_only {
+  pointer-events:none;
+}
+
+.input{
+	word-wrap: break-word;
+}

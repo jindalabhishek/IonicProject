@@ -3,8 +3,8 @@
 // angular.module is a global place for creating, registering and retrieving Angular modules
 // 'todo' is the name of this angular module example (also set in a <body> attribute in index.html)
 // the 2nd parameter is an array of 'requires'
-
-angular.module('todo', ['ionic','ngCordova']) //adding dependecies 
+var selectedRating = 0;
+angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependecies 
 
 //default run method provided by ionic platform
 .run(function($ionicPlatform) {
@@ -39,33 +39,105 @@ angular.module('todo', ['ionic','ngCordova']) //adding dependecies
  
 })
 
-//controller(functionality) for google maps
-.controller('MapCtrl', function($scope, $state, $cordovaGeolocation) {
-  var options = {timeout: 10000, enableHighAccuracy: true}; //timeout
- 
-  $cordovaGeolocation.getCurrentPosition(options).then(function(position){
- 
-    var latLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); //position of User
-    console.log(latLng);
-    var mapOptions = {
-      center: latLng, // settinf center of map to be the user's current location
-      zoom: 15, //zoom span
-      mapTypeId: google.maps.MapTypeId.ROADMAP //road map, google map type id
-    };
- 
-    $scope.map = new google.maps.Map(document.getElementById("map"), mapOptions); //retrieves div 'map' present in map.html
-    google.maps.event.addListenerOnce($scope.map, 'idle', function(){ //adding listener to add marker once the map is fully loaded
+// //controller(functionality) for google maps
+.controller('MapCtrl', function($scope, $state, $cordovaGeolocation, $ionicPopup, $http) {
+  $scope.ratingsObject = {
+    iconOn: 'ion-ios-star', //Optional
+    iconOff: 'ion-ios-star-outline', //Optional
+    iconOnColor: 'rgb(200, 200, 100)', //Optional
+    iconOffColor: 'rgb(200, 100, 100)', //Optional
+    rating: 0, //Optional
+    minRating: 0, //Optional
+    readOnly: false, //Optional
+    callback: function(rating,index) { //Mandatory
+      selectedRating=rating;
+      // $scope.ratingsCallback(rating,index);
+    }
+  };
+  $scope.initMap = function() {
+    var options = {timeout: 10000, enableHighAccuracy: true}; //timeout
    
-    var marker = new google.maps.Marker({ //google maps Marker API
-        map: $scope.map, //initializing map
-        animation: google.maps.Animation.DROP,
-        position: latLng, //setting position of marker
-        title:'Hello!!' //setting lebel for marker, it's visible when u hover on the marker
-    });     
+    $cordovaGeolocation.getCurrentPosition(options).then(function(position){
    
-  });
- 
-  }, function(error){
-    console.log("Could not get location"); //error handling
-  });
+      var latLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); //position of User
+      console.log(latLng.lat());
+      var mapOptions = {
+        center: latLng, // settinf center of map to be the user's current location
+        zoom: 15, //zoom span
+        mapTypeId: google.maps.MapTypeId.ROADMAP //road map, google map type id
+      };
+   
+      $scope.map = new google.maps.Map(document.getElementById("map"), mapOptions); //retrieves div 'map' present in map.html
+      google.maps.event.addListenerOnce($scope.map, 'idle', function(){ //adding listener to add marker once the map is fully loaded
+     
+      var marker = new google.maps.Marker({ //google maps Marker API
+          map: $scope.map, //initializing map
+          icon: 'http://maps.google.com/mapfiles/ms/micons/green-dot.png',
+          animation: google.maps.Animation.DROP,
+          position: latLng, //setting position of marker
+          title:'Hello!!' //setting lebel for marker, it's visible when u hover on the marker
+        });
+
+      });
+
+      google.maps.event.addListener($scope.map, 'click', function(e) {
+          $scope.placeMarkerAndPanTo(e.latLng, $scope.map);
+        });
+
+    }, function(error){
+      console.log("Could not get location"); //error handling
+    });
+  };
+
+  $scope.placeMarkerAndPanTo = function (latLng, map) {
+        var marker = new google.maps.Marker({
+          position: latLng,
+          map: map
+        });
+        console.log(latLng.lat());
+        map.panTo(latLng);
+
+        /*POST Request
+          $http.post('/abc', {username : 'abc'}).then(function (res){
+              console.log("yo");
+          });
+        */
+  };
+
+  $scope.ratingsCallback = function(rating, index) {
+    console.log('Selected rating is : ', rating, ' and the index is : ', index);
+  };
+  $scope.showRating = function() {
+    selectedRating=0;
+    var promptPopup = $ionicPopup.prompt({
+    title: 'Rating',
+    subTitle: 'Choose 1 to 5',
+    templateUrl: 'templates/rating.html'
+    });
+    promptPopup.then(function() {
+      console.log(selectedRating);
+    });
+  };
+
+  $scope.showComments = function() {
+      var promptPopup = $ionicPopup.prompt({
+         title: 'Comments',
+         template: 'Share your views',
+         inputType: 'text',
+         inputPlaceholder: 'Write here...'
+      });
+        
+      promptPopup.then(function(res) {
+         console.log(res);
+      });
+    
+   };
+
 });
+
+
+// .controller('RateCtrl', function($scope, $ionicPopup) {
+  
+
+  
+// });
