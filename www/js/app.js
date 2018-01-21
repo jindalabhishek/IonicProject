@@ -55,6 +55,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
     }
   };
   var latLng;
+  var newlatLng;
   $scope.initMap = function() {
     var options = {timeout: 10000, enableHighAccuracy: true}; //timeout
    
@@ -82,6 +83,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
       });
 
       google.maps.event.addListener($scope.map, 'click', function(e) {
+          newlatLng = e.latLng;
           $scope.placeMarkerAndPanTo(e.latLng, $scope.map);
         });
 
@@ -120,7 +122,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
     });
   };
 
-  $scope.showComments = function() {
+  $scope.saveComments = function() {
       var promptPopup = $ionicPopup.prompt({
          title: 'Comments',
          template: 'Share your views',
@@ -133,9 +135,9 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
         console.log(latLng);
         // POST Request
         var postdata = {
-          username: 'deepak',
-          lat: latLng.lat(),
-          lon: latLng.lng(),
+          username: 'rhokmot',
+          lat: newlatLng.lat(),
+          lon: newlatLng.lng(),
           comment: res
         }
         console.log(postdata)
@@ -145,6 +147,20 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
       
       });
     
+   };
+
+   $scope.showComments = function() {
+      var temp;
+      var url = '/getComments?lat='+newlatLng.lat()+'&lon='+newlatLng.lng();
+      $http.get(url).then(function (res){
+            // console.log(res);
+            temp=res.data[0].comments[0].text;
+            console.log(temp);
+            var promptPopup = $ionicPopup.prompt({
+              title: 'Comments',
+              template: '<p>'+temp+'</p>'
+            });
+        });
    };
 
 });
