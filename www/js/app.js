@@ -54,12 +54,13 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
       // $scope.ratingsCallback(rating,index);
     }
   };
+  var latLng;
   $scope.initMap = function() {
     var options = {timeout: 10000, enableHighAccuracy: true}; //timeout
    
     $cordovaGeolocation.getCurrentPosition(options).then(function(position){
    
-      var latLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); //position of User
+      latLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); //position of User
       console.log(latLng.lat());
       var mapOptions = {
         center: latLng, // settinf center of map to be the user's current location
@@ -128,7 +129,20 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
       });
         
       promptPopup.then(function(res) {
-         console.log(res);
+        console.log(res);
+        console.log(latLng);
+        // POST Request
+        var postdata = {
+          username: 'deepak',
+          lat: latLng.lat(),
+          lon: latLng.lng(),
+          comment: res
+        }
+        console.log(postdata)
+        $http.post('/postComment', postdata).then(function (res){
+            console.log(res);
+        });
+      
       });
     
    };
