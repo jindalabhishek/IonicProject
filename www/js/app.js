@@ -4,7 +4,7 @@
 // 'todo' is the name of this angular module example (also set in a <body> attribute in index.html)
 // the 2nd parameter is an array of 'requires'
 var selectedRating = 0;
-angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependecies 
+angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //adding dependecies 
 
 //default run method provided by ionic platform
 .run(function($ionicPlatform) {
@@ -26,21 +26,50 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
 })
 
 //map config, sends map.html to front end
-.config(function($stateProvider, $urlRouterProvider) {
+.config(function($stateProvider, $urlRouterProvider, $httpProvider) {
  
   $stateProvider
-  .state('map', {
-    url: '/',
-    templateUrl: 'templates/map.html',
-    controller: 'MapCtrl'
+  .state('login', {
+    url: '/login',
+    cache: false,
+    templateUrl: 'templates/login.html',
   });
+
+  $stateProvider
+  .state('signup', {
+    url: '/signup',
+    cache: false,
+    templateUrl: 'templates/register.html',
+    // controller: 'MapCtrl'
+  });
+
+  $stateProvider
+  .state('map', {
+    url: '/map',
+    cache: false,
+    // abstract: true,
+    templateUrl: 'templates/map.html',
+    // controller: 'MapCtrl'
+  });
+
+  $stateProvider
+  .state('comments', {
+    url: '/comments',
+    cache: false,
+    templateUrl: 'templates/comments.html',
+    // controller: 'MapCtrl'
+  });
+
+
  
-  $urlRouterProvider.otherwise("/");
+  $urlRouterProvider.otherwise("/login");
+
+  // $state.go($state.current, {}, {reload: true});
  
 })
 
 // //controller(functionality) for google maps
-.controller('MapCtrl', function($scope, $state, $cordovaGeolocation, $ionicPopup, $http) {
+.controller('MapCtrl', function($scope, $state, $cordovaGeolocation, $ionicPopup, $http, $ionicLoading, toaster) {
   $scope.ratingsObject = {
     iconOn: 'ion-ios-star', //Optional
     iconOff: 'ion-ios-star-outline', //Optional
@@ -57,6 +86,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
   var latLng;
   var newlatLng;
   $scope.initMap = function() {
+    console.log('yes');
     var options = {timeout: 10000, enableHighAccuracy: true}; //timeout
    
     $cordovaGeolocation.getCurrentPosition(options).then(function(position){
@@ -64,12 +94,19 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
       latLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); //position of User
       console.log(latLng.lat());
       var mapOptions = {
-        center: latLng, // settinf center of map to be the user's current location
+        center: latLng, // setting center of map to be the user's current location
         zoom: 15, //zoom span
         mapTypeId: google.maps.MapTypeId.ROADMAP //road map, google map type id
       };
    
       $scope.map = new google.maps.Map(document.getElementById("map"), mapOptions); //retrieves div 'map' present in map.html
+      // google.maps.event.trigger($scope.map, "resize");
+      // $scope.map.setZoom(15);
+      $scope.infowindow = new google.maps.InfoWindow({
+        maxWidth:200
+      });
+      $scope.geocoder = new google.maps.Geocoder();
+      $scope.place = new google.maps.places.PlacesService($scope.map);
       google.maps.event.addListenerOnce($scope.map, 'idle', function(){ //adding listener to add marker once the map is fully loaded
      
       var marker = new google.maps.Marker({ //google maps Marker API
@@ -83,8 +120,38 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
       });
 
       google.maps.event.addListener($scope.map, 'click', function(e) {
+          console.log(e);
           newlatLng = e.latLng;
           $scope.placeMarkerAndPanTo(e.latLng, $scope.map);
+          if(e.placeId != undefined){
+            $scope.place.getDetails({placeId: e.placeId}, function(result, status) {
+              if (status !== google.maps.places.PlacesServiceStatus.OK) {
+                console.error(status);
+                return;
+              }
+              console.log(result.name, result.formatted_address);
+              $scope.infowindow.setContent('<div><strong>' + result.name + '</strong><br>' +
+                  result.formatted_address + '</div><br><a class="center" href="/#/comments">View Comments</a>');
+              $scope.infowindow.setPosition(e.latLng);
+              $scope.infowindow.open($scope.map);
+            });
+          }
+          else{
+            $scope.geocoder.geocode({
+              'latLng': e.latLng
+            }, function(results, status) {
+              if (status == google.maps.GeocoderStatus.OK) {
+                if (results[0]) {
+                  if(results[0].name == undefined)
+                    results[0].name = 'Unnamed';
+                  $scope.infowindow.setContent('<div><strong>' + results[0].name + '</strong><br>' +
+                  results[0].formatted_address + '</div><br><a class="center" href="/#/comments">View Comments</a>');
+                  $scope.infowindow.setPosition(e.latLng);
+                  $scope.infowindow.open($scope.map);
+                }
+              }
+            });
+          }
         });
 
     }, function(error){
@@ -140,7 +207,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
           lon: newlatLng.lng(),
           comment: res
         }
-        console.log(postdata)
+        console.log(postdata);
         $http.post('/postComment', postdata).then(function (res){
             console.log(res);
         });
@@ -150,17 +217,70 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings']) //adding dependeci
    };
 
    $scope.showComments = function() {
-      var temp;
+
+      console.log('call');
+      if(newlatLng == undefined){
+        toaster.error({title: 'Please select a location', timeout:1000});
+        $state.go('map');
+      }else{
       var url = '/getComments?lat='+newlatLng.lat()+'&lon='+newlatLng.lng();
       $http.get(url).then(function (res){
-            // console.log(res);
-            temp=res.data[0].comments[0].text;
-            console.log(temp);
-            var promptPopup = $ionicPopup.prompt({
-              title: 'Comments',
-              template: '<p>'+temp+'</p>'
-            });
-        });
+            console.log(res);
+            var temp=res.data[0].comments[0].text;
+            var divElement = angular.element(document.querySelector('#comments'));
+            divElement.append("<p>hi</p>")
+      });
+    }
+   };
+
+   $scope.login = function(){
+      var postdata = {
+          username: document.getElementById("username").value,
+          password: document.getElementById("password").value
+      }
+      $http.post('/login', postdata).then(function (res){
+        if(res.data.err=='SUCCESS_LOGIN'){
+          // $ionicLoading.show({ template: res.data.msg, noBackdrop: true, duration: 500 });
+          $scope.user = document.getElementById("username").value;
+          toaster.success({title: res.data.msg, timeout:1000});
+          // $scope.initMap();
+          $state.go('map');
+        }
+        else{
+          toaster.error({title: res.data.msg, timeout:1500});
+        }
+      });
+   }
+   $scope.registerUser = function() {
+      var postdata = {
+          username: document.getElementById("rusername").value,
+          password: document.getElementById("rpassword").value
+      }
+      $http.post('/registerUser', postdata).then(function (res){
+        if(res.data.err=='USERNAME_TAKEN'){
+          toaster.error({title: res.data.msg, timeout:1500});
+        }
+      });
+   };
+
+   $scope.checkSession = function(val) {
+      console.log(val);
+      $http.get('/getSession').then(function (res){
+        console.log(res.data.err);
+        if(res.data.err == true){
+          if(val != 'map'){
+            $state.go('map');
+          }
+          else
+            $scope.initMap();
+        }
+        else{
+          if(val=='register')
+            $state.go('signup');
+          else
+            $state.go('login');
+        }
+      });
    };
 
 });

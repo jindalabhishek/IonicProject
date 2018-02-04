@@ -1,0 +1,44 @@
+<!-- <ion-view view-title="Register"> -->
+<ion-content data-ng-init="checkSession('register')">
+<form name="registerForm" ng-submit="registerUser()">
+   <div class = "list">
+      <div class = "item item-input-inset">
+         <label class = "item item-input-wrapper">		
+            <i class = "icon ion-person placeholder-icon"></i>
+            <input type="text" name="rusername" ng-model="rusername" value="" id="rusername" placeholder="Username" required />
+         </label>
+      </div>
+         <span class = "item item-input-inset" style="font-size:75%; color:red" ng-show="registerForm.rusername.$touched && registerForm.rusername.$error.required">Username is required</span>
+
+
+      <div class = "item item-input-inset">
+         <label class = "item item-input-wrapper">
+            <i class = "icon ion-key placeholder-icon"></i>
+            <input type = "password" name="rpassword" ng-model="rpassword" value="" id="rpassword" placeholder = "Password" required />
+         </label>
+      </div>
+         <span class = "item item-input-inset" style="font-size:75%; color:red" ng-show="registerForm.rpassword.$touched && registerForm.rpassword.$error.required">Password is required</span>
+
+      <div class = "item item-input-inset">
+         <label class = "item item-input-wrapper">
+            <i class = "icon ion-key placeholder-icon"></i>
+            <input type = "password" name="confirmrpassword" ng-model="confirmrpassword" value="" id="confirmrpassword" placeholder = "Confirm Password" required />
+         </label>
+      </div>
+         <span class = "item item-input-inset" style="font-size:75%; color:red" ng-show="registerForm.confirmrpassword.$touched && confirmrpassword!=rpassword">Passwords don't match !!</span>
+   </div>
+
+   <div class="row">
+      <div class="col text-center">
+         <button type="submit" class = "button button-positive" ng-disabled="registerForm.$invalid || confirmrpassword!=rpassword">
+               Register
+         </button>
+      </div>
+   </div>
+</form>
+
+<div class="text-center">
+   <a class="center" href="/#/login"> Login now </a>
+</div>
+</ion-content>
+<!-- </ion-view> -->
