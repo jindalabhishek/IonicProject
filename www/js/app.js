@@ -28,11 +28,19 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
 //map config, sends map.html to front end
 .config(function($stateProvider, $urlRouterProvider, $httpProvider) {
  
+$urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
+        console.log(window.localStorage);
+        console.log('isme aaya')
+        if (window.localStorage['isLoggedIn'] == 'true'){
+            return '/map'
+        }
+  })
+  
   $stateProvider
   .state('login', {
-    url: '/login',
+    url:'/login',
     cache: false,
-    templateUrl: 'templates/login.html',
+    templateUrl: 'templates/login.html'
   });
 
   $stateProvider
@@ -46,7 +54,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
   $stateProvider
   .state('map', {
     url: '/map',
-    cache: false,
+    cache: true,
     // abstract: true,
     templateUrl: 'templates/map.html',
     // controller: 'MapCtrl'
@@ -63,7 +71,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
 
  
   $urlRouterProvider.otherwise("/login");
-
+   
   // $state.go($state.current, {}, {reload: true});
  
 })
@@ -243,6 +251,8 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
           // $ionicLoading.show({ template: res.data.msg, noBackdrop: true, duration: 500 });
           $scope.user = document.getElementById("username").value;
           toaster.success({title: res.data.msg, timeout:1000});
+          window.localStorage['isLoggedIn'] = true;
+          window.localStorage['username'] = postdata.username;
           // $scope.initMap();
           $state.go('map');
         }
