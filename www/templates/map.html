@@ -1,5 +1,11 @@
-<!-- <ion-view view-title="Welcome {{user}}"> -->
+<ion-view view-title="Welcome {{user}}" hide-back-button="true">
     <ion-content>
-        <div id="map" data-ng-init="checkSession('map')"></div>
+        <div id="map" data-ng-init="initMap()"></div>
     </ion-content>
-<!-- </ion-view> -->
+
+<div class = "bar bar-footer bar-assertive">
+          <button class = "button icon ion-star" ng-click="showRating()"></button>
+          <button class = "button icon ion-edit placeholder-icon" ng-click="saveComments()"></button>
+      </div>
+
+</ion-view>
