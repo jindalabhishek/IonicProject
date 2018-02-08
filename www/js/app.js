@@ -3,38 +3,28 @@
 // angular.module is a global place for creating, registering and retrieving Angular modules
 // 'todo' is the name of this angular module example (also set in a <body> attribute in index.html)
 // the 2nd parameter is an array of 'requires'
-var selectedRating = 0;
-angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //adding dependecies 
-
-//default run method provided by ionic platform
-.run(function($ionicPlatform) {
-  $ionicPlatform.ready(function() {
-    if(window.cordova && window.cordova.plugins.Keyboard) {
-      // Hide the accessory bar by default (remove this to show the accessory bar above the keyboard
-      // for form inputs)
-      cordova.plugins.Keyboard.hideKeyboardAccessoryBar(true);
-
-      // Don't remove this line unless you know what you are doing. It stops the viewport
-      // from snapping when text inputs are focused. Ionic handles this internally for
-      // a much nicer keyboard experience.
-      cordova.plugins.Keyboard.disableScroll(true);
-    }
-    if(window.StatusBar) {
-      StatusBar.styleDefault();
-    }
-  });
-})
-
-//map config, sends map.html to front end
-.config(function($stateProvider, $urlRouterProvider, $httpProvider) {
- 
-$urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
-        console.log(window.localStorage);
-        console.log('isme aaya')
+var whenConfig = ['$urlRouterProvider', function($urlRouterProvider) {
+  console.log("ok");
+    $urlRouterProvider
+      .when('/login', ['$state', function ($state) {
+        console.log("ok");
         if (window.localStorage['isLoggedIn'] == 'true'){
-            return '/map'
+          $state.go('map');
         }
-  })
+        else
+          $state.go('login'); 
+    }])
+    .when('/signup', ['$state', function ($state) {
+        console.log("ok");
+        if (window.localStorage['isLoggedIn'] == 'true'){
+          $state.go('map');
+        }
+        else
+          $state.go('signup'); 
+    }])
+    .otherwise('/login');
+}];
+var stateConfig = ['$stateProvider',function($stateProvider) {
   
   $stateProvider
   .state('login', {
@@ -63,21 +53,39 @@ $urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
   $stateProvider
   .state('comments', {
     url: '/comments',
-    cache: false,
+    cache: true,
     templateUrl: 'templates/comments.html',
     // controller: 'MapCtrl'
   });
-
-
  
-  $urlRouterProvider.otherwise("/login");
-   
-  // $state.go($state.current, {}, {reload: true});
- 
+}];
+var selectedRating = 0;
+angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //adding dependecies 
+
+//default run method provided by ionic platform
+.run(function($ionicPlatform) {
+  $ionicPlatform.ready(function() {
+    if(window.cordova && window.cordova.plugins.Keyboard) {
+      // Hide the accessory bar by default (remove this to show the accessory bar above the keyboard
+      // for form inputs)
+      cordova.plugins.Keyboard.hideKeyboardAccessoryBar(true);
+
+      // Don't remove this line unless you know what you are doing. It stops the viewport
+      // from snapping when text inputs are focused. Ionic handles this internally for
+      // a much nicer keyboard experience.
+      cordova.plugins.Keyboard.disableScroll(true);
+    }
+    if(window.StatusBar) {
+      StatusBar.styleDefault();
+    }
+  });
 })
-
+.config(whenConfig)
+.config(stateConfig)
+//map config, sends map.html to front end
 // //controller(functionality) for google maps
-.controller('MapCtrl', function($scope, $state, $cordovaGeolocation, $ionicPopup, $http, $ionicLoading, toaster) {
+.controller('MapCtrl', function($scope, $state, $cordovaGeolocation, $ionicPopup, $http, $ionicLoading, toaster, $compile) {
+  $scope.user = window.localStorage['username'];
   $scope.ratingsObject = {
     iconOn: 'ion-ios-star', //Optional
     iconOff: 'ion-ios-star-outline', //Optional
@@ -104,15 +112,14 @@ $urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
       var mapOptions = {
         center: latLng, // setting center of map to be the user's current location
         zoom: 15, //zoom span
-        mapTypeId: google.maps.MapTypeId.ROADMAP //road map, google map type id
+        mapTypeId: google.maps.MapTypeId.ROADMAP, //road map, google map type id
       };
    
       $scope.map = new google.maps.Map(document.getElementById("map"), mapOptions); //retrieves div 'map' present in map.html
-      // google.maps.event.trigger($scope.map, "resize");
-      // $scope.map.setZoom(15);
       $scope.infowindow = new google.maps.InfoWindow({
         maxWidth:200
       });
+      $scope.infowindow.set('isCustomInfoWindow',true);
       $scope.geocoder = new google.maps.Geocoder();
       $scope.place = new google.maps.places.PlacesService($scope.map);
       google.maps.event.addListenerOnce($scope.map, 'idle', function(){ //adding listener to add marker once the map is fully loaded
@@ -125,46 +132,80 @@ $urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
           title:'Hello!!' //setting lebel for marker, it's visible when u hover on the marker
         });
 
+      var currentMarker = new google.maps.Marker({ //google maps Marker API
+          map: $scope.map, //initializing map
+        });
+      $scope.currentMarker = currentMarker;
       });
-
+      $scope.disablePOIInfoWindow();
+      console.log($scope.currentRatingObject);
       google.maps.event.addListener($scope.map, 'click', function(e) {
+          $scope.currentMarker.setPosition(e.latLng);
           console.log(e);
           newlatLng = e.latLng;
-          $scope.placeMarkerAndPanTo(e.latLng, $scope.map);
-          if(e.placeId != undefined){
-            $scope.place.getDetails({placeId: e.placeId}, function(result, status) {
-              if (status !== google.maps.places.PlacesServiceStatus.OK) {
-                console.error(status);
-                return;
+          // $scope.placeMarkerAndPanTo(e.latLng, $scope.map);
+          var url = '/getRating?lat='+newlatLng.lat()+'&lon='+newlatLng.lng();
+          $http.get(url).then(function (res){
+            console.log(res);
+            var rateContent="";
+            if(!res.data.err && res.data.value!=0){
+              rateContent += '<div class="rating">';
+              for(i=0; i<5;i++){
+                if(i<res.data.value)
+                  rateContent += '<span style="font-size:30px;color: #FFD700;">&starf;';
+                else
+                  rateContent += '<span style="font-size:30px; color: #000000;">&starf;';
               }
-              console.log(result.name, result.formatted_address);
-              $scope.infowindow.setContent('<div><strong>' + result.name + '</strong><br>' +
-                  result.formatted_address + '</div><br><a class="center" href="/#/comments">View Comments</a>');
-              $scope.infowindow.setPosition(e.latLng);
-              $scope.infowindow.open($scope.map);
-            });
-          }
-          else{
-            $scope.geocoder.geocode({
-              'latLng': e.latLng
-            }, function(results, status) {
-              if (status == google.maps.GeocoderStatus.OK) {
-                if (results[0]) {
-                  if(results[0].name == undefined)
-                    results[0].name = 'Unnamed';
-                  $scope.infowindow.setContent('<div><strong>' + results[0].name + '</strong><br>' +
-                  results[0].formatted_address + '</div><br><a class="center" href="/#/comments">View Comments</a>');
-                  $scope.infowindow.setPosition(e.latLng);
-                  $scope.infowindow.open($scope.map);
+              rateContent += '</div>';
+            }
+            if(e.placeId != undefined){
+              $scope.place.getDetails({placeId: e.placeId}, function(result, status) {
+                if (status !== google.maps.places.PlacesServiceStatus.OK) {
+                  console.error(status);
+                  return;
                 }
-              }
-            });
-          }
+                console.log(result);
+                console.log(result.name, result.formatted_address);
+                var content = '<div><strong>' + result.name + '</strong>' + rateContent + '<br>' +
+                  result.formatted_address + '</div><br><a class="center" href="/#/comments">View Comments</a>';
+                $scope.infowindow.setContent(content);
+                $scope.infowindow.setPosition(e.latLng);
+                $scope.infowindow.open($scope.map, $scope.currentMarker);
+              });
+            }
+            else{
+              $scope.geocoder.geocode({
+                'latLng': e.latLng
+              }, function(results, status) {
+                if (status == google.maps.GeocoderStatus.OK) {
+                  if (results[0]) {
+                    if(results[0].name == undefined)
+                      results[0].name = 'Unnamed';
+                    var content ='<div><strong>' + results[0].name + '</strong>' + rateContent +'<br>' +
+                    results[0].formatted_address + '</div><br><a class="center" href="/#/comments">View Comments</a>';
+                    $scope.infowindow.setContent(content);
+                    $scope.infowindow.setPosition(e.latLng);
+                    $scope.infowindow.open($scope.map, $scope.currentMarker);
+                  }
+                }
+              });
+            }
+          });
         });
 
     }, function(error){
       console.log("Could not get location"); //error handling
     });
+  };
+
+  $scope.disablePOIInfoWindow = function(){
+    var fnSet = google.maps.InfoWindow.prototype.set;
+    google.maps.InfoWindow.prototype.set = function () {
+        if(this.get('isCustomInfoWindow')){
+          // console.log(arguments);
+           fnSet.apply(this, arguments);
+         }
+    };
   };
 
   $scope.placeMarkerAndPanTo = function (latLng, map) {
@@ -186,18 +227,47 @@ $urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
     console.log('Selected rating is : ', rating, ' and the index is : ', index);
   };
   $scope.showRating = function() {
+    if(window.localStorage['username']==undefined){
+      toaster.error({title: 'Please Login to Rate', timeout:1500});
+      return;
+    }
+    if(newlatLng == undefined){
+        toaster.error({title: 'Please select a location', timeout:1500});
+        return;
+    }
     selectedRating=0;
     var promptPopup = $ionicPopup.prompt({
     title: 'Rating',
     subTitle: 'Choose 1 to 5',
     templateUrl: 'templates/rating.html'
     });
-    promptPopup.then(function() {
-      console.log(selectedRating);
+    promptPopup.then(function(res) {
+      if(res==''){
+        toaster.error({title: 'Please rate from 1 to 5', timeout:1500});
+        return;
+      }
+      var postdata = {
+          username: window.localStorage['username'],
+          lat: newlatLng.lat(),
+          lon: newlatLng.lng(),
+          rating: selectedRating
+        }
+        console.log(postdata);
+        $http.post('/postRating', postdata).then(function (res){
+            console.log(res);
+        });
     });
   };
 
   $scope.saveComments = function() {
+      if(window.localStorage['username']==undefined){
+        toaster.error({title: 'Please Login to Comment', timeout:1500});
+        return;
+      }
+      if(newlatLng == undefined){
+          toaster.error({title: 'Please select a location', timeout:1500});
+          return;
+      }
       var promptPopup = $ionicPopup.prompt({
          title: 'Comments',
          template: 'Share your views',
@@ -206,11 +276,15 @@ $urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
       });
         
       promptPopup.then(function(res) {
-        console.log(res);
-        console.log(latLng);
-        // POST Request
+        // console
+        if(res == undefined)
+          return;
+        if(res ==''){
+          toaster.error({title: 'Please put valid comment', timeout:1500});
+          return;
+        }
         var postdata = {
-          username: 'rhokmot',
+          username: window.localStorage['username'],
           lat: newlatLng.lat(),
           lon: newlatLng.lng(),
           comment: res
@@ -225,21 +299,35 @@ $urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
    };
 
    $scope.showComments = function() {
-
       console.log('call');
       if(newlatLng == undefined){
-        toaster.error({title: 'Please select a location', timeout:1000});
+        toaster.error({title: 'Please select a location', timeout:1500});
         $state.go('map');
       }else{
       var url = '/getComments?lat='+newlatLng.lat()+'&lon='+newlatLng.lng();
       $http.get(url).then(function (res){
-            console.log(res);
-            var temp=res.data[0].comments[0].text;
             var divElement = angular.element(document.querySelector('#comments'));
-            divElement.append("<p>hi</p>")
+            console.log(res);
+            if(res.data.err=='NO_COMMENT')
+              divElement.append('<span class = "item item-input-inset" style="color:red">'+res.data.msg+'</span>');
+            else{
+              for(var itr in res.data){
+                var comment = res.data[itr];
+                divElement.append('<span class = "item item-input-inset" style="color:green">@'+comment.username+': '+comment.text+'</span>');
+              }
+            }
       });
     }
    };
+
+   // $scope.showRatingForLoc = function() {
+   //  // var response;
+   //  var url = '/getRating?lat='+newlatLng.lat()+'&lon='+newlatLng.lng();
+   //  $http.get(url).then(function (res){
+   //    console.log(res.data);
+   //    return res.data;
+   //  });
+   // }
 
    $scope.login = function(){
       var postdata = {
@@ -249,8 +337,7 @@ $urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
       $http.post('/login', postdata).then(function (res){
         if(res.data.err=='SUCCESS_LOGIN'){
           // $ionicLoading.show({ template: res.data.msg, noBackdrop: true, duration: 500 });
-          $scope.user = document.getElementById("username").value;
-          toaster.success({title: res.data.msg, timeout:1000});
+          toaster.success({title: res.data.msg, timeout:1500});
           window.localStorage['isLoggedIn'] = true;
           window.localStorage['username'] = postdata.username;
           // $scope.initMap();
@@ -267,31 +354,35 @@ $urlRouterProvider.when(/((\/login)|(\/signup))/, function(){
           password: document.getElementById("rpassword").value
       }
       $http.post('/registerUser', postdata).then(function (res){
+        console.log(res);
         if(res.data.err=='USERNAME_TAKEN'){
           toaster.error({title: res.data.msg, timeout:1500});
+        }else{
+          toaster.success({title: res.data.msg, timeout:1500});
+          $state.go('login');
         }
       });
    };
 
-   $scope.checkSession = function(val) {
-      console.log(val);
-      $http.get('/getSession').then(function (res){
-        console.log(res.data.err);
-        if(res.data.err == true){
-          if(val != 'map'){
-            $state.go('map');
-          }
-          else
-            $scope.initMap();
-        }
-        else{
-          if(val=='register')
-            $state.go('signup');
-          else
-            $state.go('login');
-        }
-      });
-   };
+   // $scope.checkSession = function(val) {
+   //    console.log(val);
+   //    $http.get('/getSession').then(function (res){
+   //      console.log(res.data.err);
+   //      if(res.data.err == true){
+   //        if(val != 'map'){
+   //          $state.go('map');
+   //        }
+   //        else
+   //          $scope.initMap();
+   //      }
+   //      else{
+   //        if(val=='register')
+   //          $state.go('signup');
+   //        else
+   //          $state.go('login');
+   //      }
+   //    });
+   // };
 
 });
 
