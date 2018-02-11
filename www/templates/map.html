@@ -1,4 +1,9 @@
 <ion-view view-title="Welcome {{user}}" hide-back-button="true">
+<ion-nav-buttons side="right">
+        <button class="button" ng-click="logout()">
+        	{{button}}
+        </button>
+    </ion-nav-buttons>
     <ion-content>
         <div id="map" data-ng-init="initMap()"></div>
     </ion-content>

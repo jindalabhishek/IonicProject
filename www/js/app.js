@@ -85,7 +85,6 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
 //map config, sends map.html to front end
 // //controller(functionality) for google maps
 .controller('MapCtrl', function($scope, $state, $cordovaGeolocation, $ionicPopup, $http, $ionicLoading, toaster, $compile) {
-  $scope.user = window.localStorage['username'];
   $scope.ratingsObject = {
     iconOn: 'ion-ios-star', //Optional
     iconOff: 'ion-ios-star-outline', //Optional
@@ -99,10 +98,19 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
       // $scope.ratingsCallback(rating,index);
     }
   };
+  $scope.user = window.localStorage['username'];
+  if(window.localStorage['isLoggedIn']!='true')
+    $scope.button = 'Login';
+  else
+    $scope.button = 'Logout';
   var latLng;
-  var newlatLng;
+  var newlatLng
   $scope.initMap = function() {
     console.log('yes');
+    console.log($scope.user);
+    if(window.localStorage['isLoggedIn']=='true')
+      toaster.success({title: 'User has successfully logged in.', timeout:1000});
+
     var options = {timeout: 10000, enableHighAccuracy: true}; //timeout
    
     $cordovaGeolocation.getCurrentPosition(options).then(function(position){
@@ -242,7 +250,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
     templateUrl: 'templates/rating.html'
     });
     promptPopup.then(function(res) {
-      if(res==''){
+      if(res=='' && selectedRating == 0){
         toaster.error({title: 'Please rate from 1 to 5', timeout:1500});
         return;
       }
@@ -313,7 +321,10 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
             else{
               for(var itr in res.data){
                 var comment = res.data[itr];
-                divElement.append('<span class = "item item-input-inset" style="color:green">@'+comment.username+': '+comment.text+'</span>');
+                if(comment=='')
+                  divElement.append('<span class = "item item-input-inset" style="color:red">'+res.data.msg+'</span>');
+                else
+                  divElement.append('<span class = "item item-input-inset" style="color:green">@'+comment.username+': '+comment.text+'</span>');
               }
             }
       });
@@ -329,7 +340,16 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
    //  });
    // }
 
+   $scope.logout = function(){
+    console.log('lol');
+    window.localStorage['isLoggedIn']=false;
+    window.localStorage['username']="";
+    window.location.reload(true);
+    $state.go('login');
+   };
    $scope.login = function(){
+      console.log($scope.button);
+      console.log($scope.user);
       var postdata = {
           username: document.getElementById("username").value,
           password: document.getElementById("password").value
@@ -337,10 +357,11 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
       $http.post('/login', postdata).then(function (res){
         if(res.data.err=='SUCCESS_LOGIN'){
           // $ionicLoading.show({ template: res.data.msg, noBackdrop: true, duration: 500 });
-          toaster.success({title: res.data.msg, timeout:1500});
+          // toaster.success({title: res.data.msg, timeout:1000});
           window.localStorage['isLoggedIn'] = true;
           window.localStorage['username'] = postdata.username;
           // $scope.initMap();
+          window.location.reload(true);
           $state.go('map');
         }
         else{
