@@ -1,0 +1,37 @@
+<ion-view view-title="Login" class="text-center">
+<ion-content>
+<form name="loginForm" ng-submit="login()">
+   <div class = "list">
+      <div class = "item item-input-inset">
+         <label class = "item item-input-wrapper">		
+            <i class = "icon ion-person placeholder-icon"></i>
+            <input type="text" name="username" ng-model="username" value="" id="username" placeholder="Username" required />
+         </label>
+      </div>
+         <span class = "item item-input-inset" style="font-size:75%; color:red" ng-show="loginForm.username.$touched && loginForm.username.$error.required">Username is required</span>
+
+
+      <div class = "item item-input-inset">
+         <label class = "item item-input-wrapper">
+            <i class = "icon ion-key placeholder-icon"></i>
+            <input type = "password" name="password" ng-model="password" value="" id="password" placeholder = "Password" required />
+         </label>
+      </div>
+         <span class = "item item-input-inset" style="font-size:75%; color:red" ng-show="loginForm.password.$touched && loginForm.password.$error.required">Password is required</span>
+
+   </div>
+
+   <div class="row">
+      <div class="col text-center">
+         <button type = "submit" class = "button button-positive" ng-disabled="loginForm.$invalid">
+               Login
+         </button>
+      </div>
+   </div>
+</form>
+
+<div class="text-center">
+   <a class="center" href="/#/signup"> Don't have an account? Signup now </a>
+</div>
+</ion-content>
+</ion-view>
