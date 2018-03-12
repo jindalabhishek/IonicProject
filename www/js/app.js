@@ -98,25 +98,30 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
       // $scope.ratingsCallback(rating,index);
     }
   };
-  $scope.user = window.localStorage['username'];
-  if(window.localStorage['isLoggedIn']!='true')
-    $scope.button = 'Login';
-  else
-    $scope.button = 'Logout';
+  // $scope.user = window.localStorage['username'];
+  $scope.$on('$ionicView.enter', function(){
+  // Anything you can think of
+    $scope.user = window.localStorage['username'];
+    if(window.localStorage['isLoggedIn']!='true')
+      $scope.button = 'Login';
+    else
+      $scope.button = 'Logout';
+  });
+
   var latLng;
   var newlatLng
   $scope.initMap = function() {
-    console.log('yes');
-    console.log($scope.user);
-    if(window.localStorage['isLoggedIn']=='true')
-      toaster.success({title: 'User has successfully logged in.', timeout:1000});
+    // console.log('yes');
+    // console.log($scope.user);
+    // if(window.localStorage['isLoggedIn']=='true')
+      // toaster.success({title: 'User has successfully logged in.', timeout:1000});
 
     var options = {timeout: 10000, enableHighAccuracy: true}; //timeout
    
     $cordovaGeolocation.getCurrentPosition(options).then(function(position){
    
       latLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); //position of User
-      console.log(latLng.lat());
+      // console.log(latLng.lat());
       var mapOptions = {
         center: latLng, // setting center of map to be the user's current location
         zoom: 15, //zoom span
@@ -146,15 +151,15 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
       $scope.currentMarker = currentMarker;
       });
       $scope.disablePOIInfoWindow();
-      console.log($scope.currentRatingObject);
+      // console.log($scope.currentRatingObject);
       google.maps.event.addListener($scope.map, 'click', function(e) {
           $scope.currentMarker.setPosition(e.latLng);
-          console.log(e);
+          // console.log(e);
           newlatLng = e.latLng;
           // $scope.placeMarkerAndPanTo(e.latLng, $scope.map);
           var url = '/getRating?lat='+newlatLng.lat()+'&lon='+newlatLng.lng();
           $http.get(url).then(function (res){
-            console.log(res);
+            // console.log(res);
             var rateContent="";
             if(!res.data.err && res.data.value!=0){
               rateContent += '<div class="rating">';
@@ -172,8 +177,8 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
                   console.error(status);
                   return;
                 }
-                console.log(result);
-                console.log(result.name, result.formatted_address);
+                // console.log(result);
+                // console.log(result.name, result.formatted_address);
                 var content = '<div><strong>' + result.name + '</strong>' + rateContent + '<br>' +
                   result.formatted_address + '</div><br><a class="center" href="/#/comments">View Comments</a>';
                 $scope.infowindow.setContent(content);
@@ -221,7 +226,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
           position: latLng,
           map: map
         });
-        console.log(latLng.lat());
+        // console.log(latLng.lat());
         map.panTo(latLng);
 
         /*POST Request
@@ -235,7 +240,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
     console.log('Selected rating is : ', rating, ' and the index is : ', index);
   };
   $scope.showRating = function() {
-    if(window.localStorage['username']==undefined){
+    if(window.localStorage['isLoggedIn']=='false'){
       toaster.error({title: 'Please Login to Rate', timeout:1500});
       return;
     }
@@ -268,7 +273,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
   };
 
   $scope.saveComments = function() {
-      if(window.localStorage['username']==undefined){
+      if(window.localStorage['isLoggedIn']=='false'){
         toaster.error({title: 'Please Login to Comment', timeout:1500});
         return;
       }
@@ -344,7 +349,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
     console.log('lol');
     window.localStorage['isLoggedIn']=false;
     window.localStorage['username']="";
-    window.location.reload(true);
+    // window.location.reload(true);
     $state.go('login');
    };
    $scope.login = function(){
@@ -361,8 +366,9 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
           window.localStorage['isLoggedIn'] = true;
           window.localStorage['username'] = postdata.username;
           // $scope.initMap();
-          window.location.reload(true);
+          //window.location.reload(true);//
           $state.go('map');
+          toaster.success({title: res.data.msg, timeout:1000});
         }
         else{
           toaster.error({title: res.data.msg, timeout:1500});
