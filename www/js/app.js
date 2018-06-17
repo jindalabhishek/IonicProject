@@ -60,7 +60,7 @@ var stateConfig = ['$stateProvider',function($stateProvider) {
  
 }];
 var selectedRating = 0;
-angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //adding dependecies 
+angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecaptcha']) //adding dependecies 
 
 //default run method provided by ionic platform
 .run(function($ionicPlatform) {
@@ -84,7 +84,8 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
 .config(stateConfig)
 //map config, sends map.html to front end
 // //controller(functionality) for google maps
-.controller('MapCtrl', function($scope, $state, $cordovaGeolocation, $ionicPopup, $http, $ionicLoading, toaster, $compile) {
+.controller('MapCtrl', function($scope, $state, $cordovaGeolocation, $ionicPopup, $http, $ionicLoading, toaster, $compile, vcRecaptchaService) {
+  console.log(vcRecaptchaService);
   $scope.ratingsObject = {
     iconOn: 'ion-ios-star', //Optional
     iconOff: 'ion-ios-star-outline', //Optional
@@ -94,6 +95,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
     minRating: 0, //Optional
     readOnly: false, //Optional
     callback: function(rating,index) { //Mandatory
+      console.log(index);
       selectedRating=rating;
       // $scope.ratingsCallback(rating,index);
     }
@@ -109,7 +111,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
   });
 
   var latLng;
-  var newlatLng
+  var newlatLng;
   $scope.initMap = function() {
     // console.log('yes');
     // console.log($scope.user);
@@ -127,7 +129,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
         zoom: 15, //zoom span
         mapTypeId: google.maps.MapTypeId.ROADMAP, //road map, google map type id
       };
-   
+
       $scope.map = new google.maps.Map(document.getElementById("map"), mapOptions); //retrieves div 'map' present in map.html
       $scope.infowindow = new google.maps.InfoWindow({
         maxWidth:200
@@ -152,7 +154,26 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
       });
       $scope.disablePOIInfoWindow();
       // console.log($scope.currentRatingObject);
+      var input = document.getElementById("pac-input");
+      console.log(input);
+
+      var autocomplete = new google.maps.places.Autocomplete(input);
+      autocomplete.bindTo('bounds', $scope.map);
+      // $scope.map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+
       google.maps.event.addListener($scope.map, 'click', function(e) {
+          google.maps.event.addListener(autocomplete, 'place_changed', function() {
+          // console.log(window.event);
+          e.stop();
+          $scope.infowindow.setContent('blah');
+          var place = autocomplete.getPlace();
+          // console.log(place.geometry.viewport);
+          $scope.map.setCenter(place.geometry.location);
+          // $scope.map.setZoom(17);
+          // console.log(place_id);
+          $scope.currentMarker.setPosition(place.geometry.location);
+          });
+          // console.log(window.event);
           $scope.currentMarker.setPosition(e.latLng);
           // console.log(e);
           newlatLng = e.latLng;
@@ -354,11 +375,13 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
    };
    $scope.login = function(){
       console.log($scope.button);
-      console.log($scope.user);
+      // console.log($scope.user);
       var postdata = {
           username: document.getElementById("username").value,
-          password: document.getElementById("password").value
+          password: document.getElementById("password").value,
+          captchaResponse: vcRecaptchaService.getResponse()
       }
+      // console.log(document.getElementById(""))
       $http.post('/login', postdata).then(function (res){
         if(res.data.err=='SUCCESS_LOGIN'){
           // $ionicLoading.show({ template: res.data.msg, noBackdrop: true, duration: 500 });
@@ -390,6 +413,11 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster']) //addin
         }
       });
    };
+
+   // $http.get('/search?').then(function (res)){
+    
+   // }
+
 
    // $scope.checkSession = function(val) {
    //    console.log(val);
