@@ -4,6 +4,7 @@
 // 'todo' is the name of this angular module example (also set in a <body> attribute in index.html)
 // the 2nd parameter is an array of 'requires'
 var whenConfig = ['$urlRouterProvider', function($urlRouterProvider) {
+  // console.log($httpProvider);
   console.log("ok");
     $urlRouterProvider
       .when('/login', ['$state', function ($state) {
@@ -100,6 +101,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
       // $scope.ratingsCallback(rating,index);
     }
   };
+  $scope.searchMarkers=[];
   // $scope.user = window.localStorage['username'];
   $scope.$on('$ionicView.enter', function(){
   // Anything you can think of
@@ -110,7 +112,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
       $scope.button = 'Logout';
   });
 
-  var latLng;
+  var userLatLng;
   var newlatLng;
   $scope.initMap = function() {
     // console.log('yes');
@@ -122,14 +124,14 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
    
     $cordovaGeolocation.getCurrentPosition(options).then(function(position){
    
-      latLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); //position of User
+      userLatLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude); //position of User
       // console.log(latLng.lat());
       var mapOptions = {
-        center: latLng, // setting center of map to be the user's current location
+        center: userLatLng, // setting center of map to be the user's current location
         zoom: 15, //zoom span
         mapTypeId: google.maps.MapTypeId.ROADMAP, //road map, google map type id
       };
-
+      mapDiv = document.getElementById("map");
       $scope.map = new google.maps.Map(document.getElementById("map"), mapOptions); //retrieves div 'map' present in map.html
       $scope.infowindow = new google.maps.InfoWindow({
         maxWidth:200
@@ -143,7 +145,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
           map: $scope.map, //initializing map
           icon: 'http://maps.google.com/mapfiles/ms/micons/green-dot.png',
           animation: google.maps.Animation.DROP,
-          position: latLng, //setting position of marker
+          position: userLatLng, //setting position of marker
           title:'Hello!!' //setting lebel for marker, it's visible when u hover on the marker
         });
 
@@ -154,42 +156,78 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
       });
       $scope.disablePOIInfoWindow();
       // console.log($scope.currentRatingObject);
-      var input = document.getElementById("pac-input");
-      console.log(input);
+      $scope.input = document.getElementById("pac-input");
+      console.log($scope.input);
+      $scope.input.addEventListener('keypress', function (e){
+        var key = e.which || e.keyCode;
+        if(key==13)
+          $scope.searchLocation($scope.input.value, userLatLng);
+      });
 
-      var autocomplete = new google.maps.places.Autocomplete(input);
-      autocomplete.bindTo('bounds', $scope.map);
-      // $scope.map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
-
+      $scope.radioButtonComment = document.getElementById('commentButton');
+      $scope.radioButtonLocation = document.getElementById('locationButton');
+      if($scope.radioButtonLocation.checked){
+        var autocomplete = new google.maps.places.Autocomplete($scope.input);
+        autocomplete.bindTo('bounds', $scope.map);
+        var autocompleteListener = google.maps.event.addListener(autocomplete, 
+          'place_changed', function(ev) {
+            var place = autocomplete.getPlace();
+            // console.log(place.geometry.viewport);
+            $scope.map.setCenter(place.geometry.location);
+            // $scope.map.setZoom(17);
+            // console.log(place_id);
+            console.log(place);
+            $scope.currentMarker.setPosition(place.geometry.location);
+            $scope.infowindow.setContent(place.name +'<br>'+place.adr_address);
+            $scope.infowindow.open($scope.map, $scope.currentMarker);
+        });
+    }
+      $scope.radioButtonComment.onclick=function(){
+        if (autocomplete !== undefined) {
+            google.maps.event.removeListener(autocompleteListener);
+            google.maps.event.clearInstanceListeners(autocomplete);
+            var container = document.getElementsByClassName('pac-container');
+            for(var i =0;i<container.length;i++){
+              container[i].parentNode.removeChild(container[i]);
+            }
+            console.log('disable autocomplete to GOOGLE');
+        }
+      }
+      $scope.radioButtonLocation.onclick=function(){
+        enableGoogleAutocomplete();
+      }
+      function enableGoogleAutocomplete() {
+        autocomplete = new google.maps.places.Autocomplete($scope.input);
+        autocomplete.bindTo('bounds', $scope.map);
+        google.maps.event.addListener(autocompleteListener);
+        console.log('set autocomplete to GOOGLE');
+      }
+      // mapDiv.addEventListener('click', function(event){
+        // console.log(event);
       google.maps.event.addListener($scope.map, 'click', function(e) {
-          google.maps.event.addListener(autocomplete, 'place_changed', function() {
-          // console.log(window.event);
-          e.stop();
-          $scope.infowindow.setContent('blah');
-          var place = autocomplete.getPlace();
-          // console.log(place.geometry.viewport);
-          $scope.map.setCenter(place.geometry.location);
-          // $scope.map.setZoom(17);
-          // console.log(place_id);
-          $scope.currentMarker.setPosition(place.geometry.location);
-          });
-          // console.log(window.event);
-          $scope.currentMarker.setPosition(e.latLng);
-          // console.log(e);
-          newlatLng = e.latLng;
+        // $scope.infowindow.setContent(null);
+        newlatLng = e.latLng;
+        $scope.infowindow.close();
+        $scope.currentMarker.setMap($scope.map);
+        $scope.currentMarker.setPosition(e.latLng);
+        // google.maps.event.addListener($scope.currentMarker, 'click', function(ev) {
+          console.log(e.placeId);
+          $scope.clearSearchMarkers();
+          console.log("yes listener");
+          console.log(e.latLng.lat());
+          console.log($scope.searchMarkers[e.latLng]);
+          console.log($scope.searchMarkers[new google.maps.LatLng(Math.round(e.latLng.lat(),3), 
+            Math.round(e.latLng.lng(),3))]);
+          // $scope.currentMarker.setPosition(e.latLng);
           // $scope.placeMarkerAndPanTo(e.latLng, $scope.map);
-          var url = '/getRating?lat='+newlatLng.lat()+'&lon='+newlatLng.lng();
+          var url = '/getRating?lat='+e.latLng.lat()+'&lon='+e.latLng.lng();
           $http.get(url).then(function (res){
-            // console.log(res);
+            console.log(res);
             var rateContent="";
             if(!res.data.err && res.data.value!=0){
               rateContent += '<div class="rating">';
-              for(i=0; i<5;i++){
-                if(i<res.data.value)
-                  rateContent += '<span style="font-size:30px;color: #FFD700;">&starf;';
-                else
-                  rateContent += '<span style="font-size:30px; color: #000000;">&starf;';
-              }
+              rateContent = '<span style="display: block; background:url(http://www.ulmanen.fi/stuff/stars.png) 0 -16px repeat-x;height: 16px;width: '+res.data.value*16+'px;background-position: 0 0;position: absolute;"></span>'+
+                '<span style="display: block; background:url(http://www.ulmanen.fi/stuff/stars.png) 0 -16px repeat-x;height: 16px;width:80px;"></span>';
               rateContent += '</div>';
             }
             if(e.placeId != undefined){
@@ -198,10 +236,13 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
                   console.error(status);
                   return;
                 }
-                // console.log(result);
+                console.log(result);
+                
                 // console.log(result.name, result.formatted_address);
                 var content = '<div><strong>' + result.name + '</strong>' + rateContent + '<br>' +
                   result.formatted_address + '</div><br><a class="center" href="/#/comments">View Comments</a>';
+                console.log(content);
+                // console.log('<div><span style="background-color:red;">hi</span></div>');
                 $scope.infowindow.setContent(content);
                 $scope.infowindow.setPosition(e.latLng);
                 $scope.infowindow.open($scope.map, $scope.currentMarker);
@@ -212,6 +253,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
                 'latLng': e.latLng
               }, function(results, status) {
                 if (status == google.maps.GeocoderStatus.OK) {
+                  console.log(results);
                   if (results[0]) {
                     if(results[0].name == undefined)
                       results[0].name = 'Unnamed';
@@ -225,7 +267,9 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
               });
             }
           });
-        });
+        // });
+      });
+        // console.log(new_listener);
 
     }, function(error){
       console.log("Could not get location"); //error handling
@@ -242,13 +286,18 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
     };
   };
 
-  $scope.placeMarkerAndPanTo = function (latLng, map) {
+  $scope.placeMarkerAndPanTo = function (lat, lng) {
+        var latLng = new google.maps.LatLng(lat, lng);
         var marker = new google.maps.Marker({
           position: latLng,
-          map: map
+          map: $scope.map
         });
-        // console.log(latLng.lat());
-        map.panTo(latLng);
+        $scope.searchMarkers.push({
+          key:latLng,
+          value:marker
+        });
+        $scope.map.panTo(new google.maps.LatLng(lat, lng));
+        console.log("placed");
 
         /*POST Request
           $http.post('/abc', {username : 'abc'}).then(function (res){
@@ -257,6 +306,22 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
         */
   };
 
+  $scope.clearSearchMarkers=function(){
+    for (var i = 0; i < $scope.searchMarkers.length; i++) {
+          var marker = $scope.searchMarkers[i].value;
+          marker.setMap(null);
+    }
+    $scope.searchMarkers=[];
+  }
+  $scope.disableTap = function(){
+    container = document.getElementsByClassName('pac-container');
+    // disable ionic data tab
+    angular.element(container).attr('data-tap-disabled', 'true');
+    // leave input field if google-address-entry is selected
+    angular.element(container).on("click", function(){
+        document.getElementById('searchBar').blur();
+    });
+  };
   $scope.ratingsCallback = function(rating, index) {
     console.log('Selected rating is : ', rating, ' and the index is : ', index);
   };
@@ -288,6 +353,9 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
         }
         console.log(postdata);
         $http.post('/postRating', postdata).then(function (res){
+            if(res.data.err=='INVALID_SESSION'){
+              toaster.error({title: res.data.msg, timeout:1500});
+            }
             console.log(res);
         });
     });
@@ -384,6 +452,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
       // console.log(document.getElementById(""))
       $http.post('/login', postdata).then(function (res){
         if(res.data.err=='SUCCESS_LOGIN'){
+          console.log('yes');
           // $ionicLoading.show({ template: res.data.msg, noBackdrop: true, duration: 500 });
           // toaster.success({title: res.data.msg, timeout:1000});
           window.localStorage['isLoggedIn'] = true;
@@ -401,22 +470,38 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
    $scope.registerUser = function() {
       var postdata = {
           username: document.getElementById("rusername").value,
-          password: document.getElementById("rpassword").value
+          password: document.getElementById("rpassword").value,
+          captchaResponse: vcRecaptchaService.getResponse()
       }
       $http.post('/registerUser', postdata).then(function (res){
         console.log(res);
-        if(res.data.err=='USERNAME_TAKEN'){
-          toaster.error({title: res.data.msg, timeout:1500});
-        }else{
+        if(res.data.err=='NEW_USER'){
           toaster.success({title: res.data.msg, timeout:1500});
           $state.go('login');
+        }else{
+          toaster.error({title: res.data.msg, timeout:1500});
         }
       });
    };
 
-   // $http.get('/search?').then(function (res)){
-    
-   // }
+
+   $scope.searchLocation = function(query, latLng){
+    $scope.currentMarker.setMap(null);
+    $scope.map.setCenter(userLatLng);
+    if($scope.radioButtonComment.checked){
+        $http.get('/search?param='+query+'&lat='+latLng.lat()+'&lon='+latLng.lng())
+             .then(function (res){
+              if(res.data.length==0){
+                toaster.warning({title: 'No Such Comments Found in the vicinity', timeout:1500});
+              }
+              $scope.clearSearchMarkers();
+              for(var itr in res.data){
+                $scope.placeMarkerAndPanTo(res.data[itr].lat, res.data[itr].lon);
+              }
+              // $scope.placeMarkerAndPanTo(res.data[0].lat, res.data[0].lon);
+        });
+       }
+   }
 
 
    // $scope.checkSession = function(val) {

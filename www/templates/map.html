@@ -5,17 +5,17 @@
         </button>
     </ion-nav-buttons>
     <ion-content>
-      <div class = "list">
-        <label class = "item item-input">   
-           <input id="pac-input" class="controls" type = "text" placeholder = "Enter a location" />
-        </label>
-      </div>
-      <!-- <label class = "item item-input">
-        <input type = "text" placeholder = "Placeholder 1" />
-      </label> -->
-    </div>
-
-      <div id="map" data-ng-init="initMap()"></div>
+      <!-- <div> -->
+        <form>
+        <!-- <div id="ok" class = "list"> -->
+          <label class = "item item-input">   
+             <input id="pac-input" class="controls" type = "text" placeholder = "Enter a location" ng-focus="disableTap()"/>
+          </label>
+          <input type="radio" name="search" id="locationButton" checked> Location         
+          <input type="radio" name="search" id="commentButton" > Comment<br>
+      </form>
+        <div id="map" data-ng-init="initMap()"></div>
+      <!-- </div> -->
     </ion-content>
 
 <div class = "bar bar-footer bar-assertive">
