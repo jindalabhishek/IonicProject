@@ -158,14 +158,14 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
       // console.log($scope.currentRatingObject);
       $scope.input = document.getElementById("pac-input");
       console.log($scope.input);
+      $scope.radioButtonComment = document.getElementById('commentButton');
+      $scope.radioButtonLocation = document.getElementById('locationButton');
       $scope.input.addEventListener('keypress', function (e){
         var key = e.which || e.keyCode;
-        if(key==13)
+        if(key==13 && $scope.radioButtonComment.checked)
           $scope.searchLocation($scope.input.value, userLatLng);
       });
 
-      $scope.radioButtonComment = document.getElementById('commentButton');
-      $scope.radioButtonLocation = document.getElementById('locationButton');
       var autocomplete, autocompleteListener;
       $scope.intializeAutocomplete = function(){
            autocomplete = new google.maps.places.Autocomplete($scope.input);
@@ -209,7 +209,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
       $scope.radioButtonComment.onclick=function(){
         if (autocomplete !== undefined) {
             console.log(autocompleteListener);
-            // google.maps.event.removeListener(autocompleteListener);
+            google.maps.event.removeListener(autocompleteListener);
             google.maps.event.clearInstanceListeners(autocomplete);
             var container = document.getElementsByClassName('pac-container');
             for(var i =0;i<container.length;i++){
