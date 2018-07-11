@@ -166,25 +166,50 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
 
       $scope.radioButtonComment = document.getElementById('commentButton');
       $scope.radioButtonLocation = document.getElementById('locationButton');
-      if($scope.radioButtonLocation.checked){
-        var autocomplete = new google.maps.places.Autocomplete($scope.input);
+      var autocomplete, autocompleteListener;
+      $scope.intializeAutocomplete = function(){
+           autocomplete = new google.maps.places.Autocomplete($scope.input);
         autocomplete.bindTo('bounds', $scope.map);
-        var autocompleteListener = google.maps.event.addListener(autocomplete, 
+        autocompleteListener = google.maps.event.addListener(autocomplete, 
           'place_changed', function(ev) {
+            console.log("event");
             var place = autocomplete.getPlace();
             // console.log(place.geometry.viewport);
             $scope.map.setCenter(place.geometry.location);
             // $scope.map.setZoom(17);
             // console.log(place_id);
             console.log(place);
-            $scope.currentMarker.setPosition(place.geometry.location);
-            $scope.infowindow.setContent(place.name +'<br>'+place.adr_address);
-            $scope.infowindow.open($scope.map, $scope.currentMarker);
+            var location = place.geometry.location;
+            newlatLng = location;
+            $scope.currentMarker.setMap($scope.map);
+            $scope.currentMarker.setPosition(location);
+            console.log(location.lat());
+            var url = '/getRating?lat='+location.lat()+'&lon='+location.lng();
+            $http.get(url).then(function (res){
+              console.log(res);
+              var rateContent="";
+              if(!res.data.err && res.data.value!=0){
+                rateContent += '<div class="rating">';
+                rateContent = '<span style="display: block; background:url(http://www.ulmanen.fi/stuff/stars.png) 0 -16px repeat-x;height: 16px;width: '+res.data.value*16+'px;background-position: 0 0;position: absolute;"></span>'+
+                  '<span style="display: block; background:url(http://www.ulmanen.fi/stuff/stars.png) 0 -16px repeat-x;height: 16px;width:80px;"></span>';
+                rateContent += '</div>';
+              }
+              console.log(rateContent);
+              var content = '<div><strong>' + place.name + '</strong>' + rateContent + '<br>' +
+                  place.adr_address + '</div><br><a class="center" href="/#/comments">View Comments</a>';  
+              $scope.infowindow.setContent(content);
+              $scope.infowindow.setPosition(location);
+              $scope.infowindow.open($scope.map, $scope.currentMarker);
+          });
         });
     }
+      if($scope.radioButtonLocation.checked){
+        $scope.intializeAutocomplete();
+      }
       $scope.radioButtonComment.onclick=function(){
         if (autocomplete !== undefined) {
-            google.maps.event.removeListener(autocompleteListener);
+            console.log(autocompleteListener);
+            // google.maps.event.removeListener(autocompleteListener);
             google.maps.event.clearInstanceListeners(autocomplete);
             var container = document.getElementsByClassName('pac-container');
             for(var i =0;i<container.length;i++){
@@ -197,9 +222,8 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
         enableGoogleAutocomplete();
       }
       function enableGoogleAutocomplete() {
-        autocomplete = new google.maps.places.Autocomplete($scope.input);
-        autocomplete.bindTo('bounds', $scope.map);
-        google.maps.event.addListener(autocompleteListener);
+        $scope.clearSearchMarkers();
+        $scope.intializeAutocomplete();
         console.log('set autocomplete to GOOGLE');
       }
       // mapDiv.addEventListener('click', function(event){
@@ -211,13 +235,8 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
         $scope.currentMarker.setMap($scope.map);
         $scope.currentMarker.setPosition(e.latLng);
         // google.maps.event.addListener($scope.currentMarker, 'click', function(ev) {
-          console.log(e.placeId);
+          console.log(e);
           $scope.clearSearchMarkers();
-          console.log("yes listener");
-          console.log(e.latLng.lat());
-          console.log($scope.searchMarkers[e.latLng]);
-          console.log($scope.searchMarkers[new google.maps.LatLng(Math.round(e.latLng.lat(),3), 
-            Math.round(e.latLng.lng(),3))]);
           // $scope.currentMarker.setPosition(e.latLng);
           // $scope.placeMarkerAndPanTo(e.latLng, $scope.map);
           var url = '/getRating?lat='+e.latLng.lat()+'&lon='+e.latLng.lng();
@@ -288,15 +307,43 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
 
   $scope.placeMarkerAndPanTo = function (lat, lng) {
         var latLng = new google.maps.LatLng(lat, lng);
+        newlatLng = latLng;
         var marker = new google.maps.Marker({
           position: latLng,
           map: $scope.map
         });
-        $scope.searchMarkers.push({
-          key:latLng,
-          value:marker
+        marker.addListener('click', function(e){
+          var url = '/getRating?lat='+lat+'&lon='+lng;
+          $http.get(url).then(function (res){
+            console.log(res);
+            var rateContent="";
+            if(!res.data.err && res.data.value!=0){
+              rateContent += '<div class="rating">';
+              rateContent = '<span style="display: block; background:url(http://www.ulmanen.fi/stuff/stars.png) 0 -16px repeat-x;height: 16px;width: '+res.data.value*16+'px;background-position: 0 0;position: absolute;"></span>'+
+                '<span style="display: block; background:url(http://www.ulmanen.fi/stuff/stars.png) 0 -16px repeat-x;height: 16px;width:80px;"></span>';
+              rateContent += '</div>';
+            }
+            $scope.geocoder.geocode({
+                'latLng': latLng
+              }, function(results, status) {
+                if (status == google.maps.GeocoderStatus.OK) {
+                  console.log(results);
+                  if (results[0]) {
+                    if(results[0].name == undefined)
+                      results[0].name = 'Unnamed';
+                    var content ='<div><strong>' + results[0].name + '</strong>' + rateContent +'<br>' +
+                    results[0].formatted_address + '</div><br><a class="center" href="/#/comments">View Comments</a>';
+                    $scope.infowindow.setContent(content);
+                    $scope.infowindow.setPosition(e.latLng);
+                    $scope.infowindow.open($scope.map, marker);
+                  }
+                }
+              });
+          });
+
         });
-        $scope.map.panTo(new google.maps.LatLng(lat, lng));
+        $scope.searchMarkers.push(marker);
+        // $scope.map.panTo(new google.maps.LatLng(lat, lng));
         console.log("placed");
 
         /*POST Request
@@ -308,7 +355,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
 
   $scope.clearSearchMarkers=function(){
     for (var i = 0; i < $scope.searchMarkers.length; i++) {
-          var marker = $scope.searchMarkers[i].value;
+          var marker = $scope.searchMarkers[i];
           marker.setMap(null);
     }
     $scope.searchMarkers=[];
@@ -324,6 +371,16 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
   };
   $scope.ratingsCallback = function(rating, index) {
     console.log('Selected rating is : ', rating, ' and the index is : ', index);
+  };
+  $scope.logout = function(){
+    console.log("yes");
+    $http.get('/logout').then(function (res){
+      console.log(res);
+      // toaster.success({title: res.data.msg, timeout:1500});
+    });
+    window.localStorage['isLoggedIn']=false;
+    window.localStorage['username']="";
+    $state.go('login');
   };
   $scope.showRating = function() {
     if(window.localStorage['isLoggedIn']=='false'){
@@ -355,6 +412,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
         $http.post('/postRating', postdata).then(function (res){
             if(res.data.err=='INVALID_SESSION'){
               toaster.error({title: res.data.msg, timeout:1500});
+              $scope.logout();
             }
             console.log(res);
         });
@@ -393,7 +451,10 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
         }
         console.log(postdata);
         $http.post('/postComment', postdata).then(function (res){
-            console.log(res);
+            if(res.data.err=='INVALID_SESSION'){
+              toaster.error({title: res.data.msg, timeout:1500});
+              $scope.logout();
+            }
         });
       
       });
@@ -434,13 +495,7 @@ angular.module('todo', ['ionic','ngCordova','ionic-ratings', 'toaster','vcRecapt
    //  });
    // }
 
-   $scope.logout = function(){
-    console.log('lol');
-    window.localStorage['isLoggedIn']=false;
-    window.localStorage['username']="";
-    // window.location.reload(true);
-    $state.go('login');
-   };
+   
    $scope.login = function(){
       console.log($scope.button);
       // console.log($scope.user);
